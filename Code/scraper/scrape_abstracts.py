@@ -61,17 +61,6 @@ pickle.dump(res, open('Abstract_MNI_raw.p', 'wb'))
 
 
 
-# examples for how to visualize MNI coords
-
-from nilearn.image import input_data
-a=input_data.NiftiSpheresMasker( res[x]['MNI'] , radius=8)
-
-brain_masker = input_data.NiftiMasker(
-    smoothing_fwhm=6,
-    detrend=True, standardize=True,
-    low_pass=0.1, high_pass=0.01, t_r=2.,
-    memory='nilearn_cache', memory_level=1, verbose=0)
-
 
 
 

@@ -8,8 +8,10 @@ import os
 import cPickle as pickle 
 from sklearn.manifold import TSNE
 from sklearn.cluster import SpectralClustering
+from sklearn.decomposition import PCA 
 from sklearn.preprocessing import scale
 import pylab as plt; plt.ion()
+from nilearn import plotting
 
 # load in data:
 os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Data')
@@ -21,7 +23,7 @@ pca_vec = PCA( n_components=3).fit_transform( wordVec )
 plt.scatter( pca_vec[:,0], pca_vec[:,1])
 
 # some clustering:
-ncluster = 50
+ncluster = 100
 sk_clus = SpectralClustering( n_clusters=ncluster ).fit( wordVec )
 
 clusVec = [ np.array( dat['imageVectors'] )[ np.where( sk_clus.labels_==x )[0] ].mean(axis=0).reshape((20,20)) for x in range(ncluster) ]

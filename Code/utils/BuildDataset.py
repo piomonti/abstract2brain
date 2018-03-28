@@ -63,6 +63,14 @@ def getMeanVectorRepresentation( tokens ):
 
 	return abs_vec/counter
 
+def getArrayVectorRepresentation( tokens ):
+	"""
+	instead of computing the mean vector, we just return all vectors in a
+	numpy array 
+	"""	
+
+	return np.array([model.get_vector(x)  for x in tokens if x in model.vocab])
+
 
 
 # load in data
@@ -94,4 +102,23 @@ for x in range(len(dataVec.keys())):
 
 pickle.dump( {'wordVectors': vecMat, 'imageVectors': imageMat, 'pid':dataVec.keys()}, open('MatrixFormated_kernsize_'+str(kernelSize)+'_pubmedVectors.p', 'wb'))
 
+
+
+# now we build the the equivalent dataset but without taking the mean of the 
+# word vectors 
+#
+
+dataVec_full = {} # will populate this dictionary as we go
+
+for pid in res.keys():
+	if len( res[pid]['abstract'] ) == 0:
+		pass
+	else:
+		mni_coords = np.array(res[pid]['MNI'])
+		dataVec_full[pid] = {'image': downsample2d(Get_2d_smoothed_activation( mni_coords, kernelSize),downsampleSize).T[::-1,:], 
+						'wordvec': getArrayVectorRepresentation( cleanAbstract( res[pid]['abstract'] ) )}
+
+
+os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Data')
+pickle.dump( dataVec_full, open('Dict_FullVectors_Downsampled_kernsize_'+str(kernelSize)+'_pubmedVectors.p', 'wb'))
 

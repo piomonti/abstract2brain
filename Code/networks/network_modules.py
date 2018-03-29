@@ -28,16 +28,28 @@ class MLP( nn.Module ):
 
 
 
+class makeSquare( nn.Module ):
+  """
+  convert into a square 
+
+  """
+  def __init__(self, dim):
+    super( makeSquare, self ).__init__()
+    self.dim = dim
+
+  def forward( self, x ):
+    return x.resize(self.dim, self.dim )
+
 class View( nn.Module ):
   """
   reshape tensor size!
   taken shamelessly from: https://discuss.pytorch.org/t/equivalent-of-np-reshape-in-pytorch/144/5
   """
-  def __init__(self, *shape):
+  def __init__(self, shape):
     super(View, self).__init__()
     self.shape = shape
   def forward(self, input):
-    return input.view(*shape)
+    return input.view(-1, 1, self.shape, self.shape)
 
 
 

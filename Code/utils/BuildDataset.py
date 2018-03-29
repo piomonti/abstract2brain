@@ -102,6 +102,12 @@ for x in range(len(dataVec.keys())):
 
 pickle.dump( {'wordVectors': vecMat, 'imageVectors': imageMat, 'pid':dataVec.keys()}, open('MatrixFormated_kernsize_'+str(kernelSize)+'_pubmedVectors.p', 'wb'))
 
+# also center and scale! 
+from sklearn.preprocessing import scale 
+vecMat = scale( vecMat, with_mean=True, with_std=False)
+imageMat2 = scale( imageMat, with_mean=False, with_std=False) # lets leave this..
+
+pickle.dump( {'wordVectors': vecMat, 'imageVectors': imageMat2, 'pid':dataVec.keys()}, open('MatrixFormated_kernsize_'+str(kernelSize)+'_pubmedVectors_SCALED.p', 'wb'))
 
 
 # now we build the the equivalent dataset but without taking the mean of the 

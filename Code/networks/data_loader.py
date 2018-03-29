@@ -1,7 +1,9 @@
 ### class to load neurosynth data into pytorch
 #
 #
-
+import torch 
+from torch.utils.data import Dataset, DataLoader
+import cPickle as pickle 
 
 class neurosynthData(Dataset):
   """load neurosynth dataset """

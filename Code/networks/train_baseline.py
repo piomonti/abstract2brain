@@ -91,12 +91,21 @@ for e in range(tr):
 if False:
 	import pylab as plt; plt.ion()
 	im_id = 40
-	f, axarr = plt.subplots(1,3)
+	f, axarr = plt.subplots(1,2)
 	axarr[0].imshow( myData[im_id]['image'].reshape((20,20)))
+	axarr[0].set_title('true activation')
 
 	wvec = Variable( torch.from_numpy( train_loader.dataset[im_id]['wordVector'] ).float())
 	wvec = wvec.resize(1,200)
 	bimage_null = net( Variable(torch.from_numpy(np.zeros(200))).float().resize(1,200)).data.numpy()
 	bimage = net( wvec ).data.numpy()
 	axarr[1].imshow( (bimage).reshape((20,20)) )
-	axarr[2].imshow( (bimage-bimage_null).reshape((20,20)) )
+	axarr[1].set_title('predicted activation')
+	#axarr[2].imshow( (bimage-bimage_null).reshape((20,20)) )
+
+
+	os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Figures/activation_plots')
+	plt.savefig('Activation_id_' + str(im_id) +'.png')
+
+
+

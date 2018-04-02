@@ -27,13 +27,13 @@ from network_DCGAN import *
 from data_loader import neurosynthData
 
 # network hyper-parameters
-lr = .001
+lr = .001 / 50
 mom = .9
-tr = 100
+tr = 50
 bs = 128 # batch size
 D_in = 200
 D_out = 20
-l2_reg = .00001
+l2_reg = .001
 hidden_layers = 1
 verbose = True
 dtype = torch.FloatTensor
@@ -42,8 +42,10 @@ networkType = 'DCGAN' # should one of ['baseline', 'baseline_conv', 'DCGAN']
 # load in neurosynth dataset:
 os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Data')
 #dat = pickle.load(open('MatrixFormated_kernsize_10_pubmedVectors.p', 'rb'))
-myData = neurosynthData( 'MatrixFormated_kernsize_10_pubmedVectors_SCALED.p' )
-train_loader = DataLoader( myData, batch_size = bs )
+myData = neurosynthData( 'MatrixFormated_kernsize_10_pubmedVectors_training.p' )
+myData_test = neurosynthData( 'MatrixFormated_kernsize_10_pubmedVectors_testing.p' )
+train_loader = DataLoader( myData, batch_size = bs, shuffle=True )
+test_loader  = DataLoader( myData_test, batch_size = bs )
 
 # define seed
 random.seed(1)
@@ -64,7 +66,18 @@ if networkType=='DCGAN':
 else:
 	optimizer = optim.SGD( net.parameters(), lr=lr, momentum=mom, weight_decay=l2_reg )
 
-thres_func = nn.Threshold( .05, 0 )
+
+loss_train = [] # track training and test loss
+loss_test_track  = []
+
+my_loss =  nn.BCEWithLogitsLoss() #  F.mse_loss # F.l1_loss
+
+if type(my_loss).__name__ == "BCEWithLogitsLoss":
+	useThres = True # we use the threshold because we are predicting binary outputs!
+	thres_func = lambda x: (x>.05).float() #nn.Threshold( .05, 0 )
+else:
+	useThres = False 
+
 # start training:
 for e in range(tr):
 	net.train() # set the model in training mode - only relevant if we are using dropout or batchnorm!
@@ -76,21 +89,57 @@ for e in range(tr):
 		# run one step of SGD
 		optimizer.zero_grad() # clear all previous gradients 
 		pred = net( data ) # get predictions for this batch
-		loss = F.l1_loss( pred.view(-1, D_out*D_out), target )
+		if useThres:
+			loss = my_loss( pred.view(-1, D_out*D_out), thres_func( target ) )
+		else:
+			loss = my_loss( pred.view(-1, D_out*D_out), target )
+		#loss = F.mse_loss( pred.view(-1, D_out*D_out), target )
+		#loss = F.l1_loss( pred.view(-1, D_out*D_out), target )
 		#loss = nn.BCEWithLogitsLoss()( pred.view(-1, D_out*D_out), target ) # thres_func( target )
 		loss.backward()
 		optimizer.step() # take one step in direction of stochastic gradient 
 		epoch_loss += loss.data.numpy()
+	# get performance on test data
+	test_perf = 0
+	for idx, sample in enumerate(test_loader):
+		data, target = Variable( sample['wordVector'] ).float(), Variable( sample['image'] ).float()
+		pred_test = net( data )
+		test_perf += my_loss( pred_test.view(-1, D_out*D_out), target).data.numpy()
+
+	# store results
+	loss_train.append( epoch_loss[0] / myData.__len__() )
+	loss_test_track.append( test_perf[0] / myData_test.__len__() )
 	if verbose:
-		print 'Epoch: ' + str(e) + '\tloss: '+ str(epoch_loss)
+		print 'Epoch: ' + str(e) + '\tloss: '+ str(epoch_loss[0] / myData.__len__() ) + '\t test loss: ' + str(test_perf[0] / myData_test.__len__() )
 
 
+saveModel = False
+if saveModel:
+	# save the model
+	os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/models/new')
+	torch.save(net, 'dcgan_architecture_doubleFilters_CrossEntLoss_threshold.pth')
 
 
-# compare some images to see if it is learning anything at all..
+# compare some images to see if it is learning anything..
 if False:
 	import pylab as plt; plt.ion()
 	im_id = 40
+	f, axarr = plt.subplots(1,2)
+	axarr[0].imshow( myData_test[im_id]['image'].reshape((20,20)))
+	axarr[0].set_title('true activation')
+
+	wvec = Variable( torch.from_numpy( test_loader.dataset[im_id]['wordVector'] ).float())
+	wvec = wvec.resize(1,200)
+	bimage_null = net( Variable(torch.from_numpy(np.zeros(200))).float().resize(1,200)).data.numpy()
+	bimage = net( wvec ).data.numpy()
+	axarr[1].imshow( (bimage).reshape((20,20)) )
+	axarr[1].set_title('predicted activation')
+
+	#os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Figures/activation_plots')
+	#plt.savefig('Activation_id_' + str(im_id) +'.png')
+
+
+	# repeat for on training data:
 	f, axarr = plt.subplots(1,2)
 	axarr[0].imshow( myData[im_id]['image'].reshape((20,20)))
 	axarr[0].set_title('true activation')
@@ -101,11 +150,4 @@ if False:
 	bimage = net( wvec ).data.numpy()
 	axarr[1].imshow( (bimage).reshape((20,20)) )
 	axarr[1].set_title('predicted activation')
-	#axarr[2].imshow( (bimage-bimage_null).reshape((20,20)) )
-
-
-	os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Figures/activation_plots')
-	plt.savefig('Activation_id_' + str(im_id) +'.png')
-
-
 

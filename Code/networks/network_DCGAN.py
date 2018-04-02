@@ -33,7 +33,7 @@ def weights_init(m):
 
 nz = 200
 ngf = 20
-filter_size = 4 # originally 8
+filter_size = 4*2 # originally 8
 # we change dimensions slightly so that we match with image we want to have!
 
 class myDCGAN_arch( nn.Module ):

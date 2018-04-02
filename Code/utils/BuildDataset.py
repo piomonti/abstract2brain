@@ -102,12 +102,25 @@ for x in range(len(dataVec.keys())):
 
 pickle.dump( {'wordVectors': vecMat, 'imageVectors': imageMat, 'pid':dataVec.keys()}, open('MatrixFormated_kernsize_'+str(kernelSize)+'_pubmedVectors.p', 'wb'))
 
+
+
 # also center and scale! 
 from sklearn.preprocessing import scale 
+np.savetxt(  fname='centeringWordVector.txt', X=vecMat.mean(axis=0))
 vecMat = scale( vecMat, with_mean=True, with_std=False)
 imageMat2 = scale( imageMat, with_mean=False, with_std=False) # lets leave this..
 
-pickle.dump( {'wordVectors': vecMat, 'imageVectors': imageMat2, 'pid':dataVec.keys()}, open('MatrixFormated_kernsize_'+str(kernelSize)+'_pubmedVectors_SCALED.p', 'wb'))
+#pickle.dump( {'wordVectors': vecMat, 'imageVectors': imageMat2, 'pid':dataVec.keys()}, open('MatrixFormated_kernsize_'+str(kernelSize)+'_pubmedVectors_SCALED.p', 'wb'))
+# split into training and testing data! We split 95, 5
+ii = int( vecMat.shape[0] * .95 )
+vecMat_train = vecMat[ :ii, :]
+vecMat_test  = vecMat[ ii:, :]
+
+imageMat_train = imageMat2[ :ii, :]
+imageMat_test  = imageMat2[ ii:, :]
+
+pickle.dump( {'wordVectors': vecMat_train, 'imageVectors': imageMat_train, 'pid':dataVec.keys()[:ii]}, open('MatrixFormated_kernsize_'+str(kernelSize)+'_pubmedVectors_training.p', 'wb'))
+pickle.dump( {'wordVectors': vecMat_test, 'imageVectors': imageMat_test, 'pid':dataVec.keys()[ii:]}, open('MatrixFormated_kernsize_'+str(kernelSize)+'_pubmedVectors_testing.p', 'wb'))
 
 
 # now we build the the equivalent dataset but without taking the mean of the 

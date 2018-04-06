@@ -141,3 +141,40 @@ for pid in res.keys():
 os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Data')
 pickle.dump( dataVec_full, open('Dict_FullVectors_Downsampled_kernsize_'+str(kernelSize)+'_pubmedVectors.p', 'wb'))
 
+
+# also build a list of all available words and their vector representations!
+
+wordCounts = {} # this may not be the most efficient way to do this...
+for k in res.keys():
+	if len( res[k]['abstract'] ) > 0:
+		# add word counts for this abstract
+		abs_words = cleanAbstract( res[k]['abstract'] ) 
+		for x in abs_words:
+			if x in wordCounts.keys():
+				wordCounts[x] += 1
+			else:
+				wordCounts[x] =  1
+
+
+# we apply a cut off at words which occur less than 100 times (i.e. throw away all words which do not occur enough)
+
+tokens = set()
+for k in wordCounts.keys():
+	if wordCounts[k] > 50:
+		tokens = tokens.union( [k] )
+#for k in res.keys():
+#	if len(res[k]['abstract'])>0:
+#		tokens = tokens.union( set( cleanAbstract( res[k]['abstract'] ) ) )
+
+
+wordVectors_dict = {}
+for x in tokens:
+	try: 
+		wordVectors_dict[x] =  model.get_vector(x)
+	except KeyError:
+		pass
+
+# save this:
+os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Data')
+pickle.dump( wordVectors_dict, open('WordVectors_reduced.p', 'wb') )
+

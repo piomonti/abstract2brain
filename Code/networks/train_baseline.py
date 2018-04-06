@@ -24,6 +24,7 @@ os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Code/networks')
 from baseline_network import baseline_network
 from baseline_network_conv import baseline_network_conv
 from network_DCGAN import * 
+from network_DCGAN_linear import * 
 from data_loader import neurosynthData
 
 # network hyper-parameters
@@ -33,14 +34,14 @@ tr = 50
 bs = 128 # batch size
 D_in = 200
 D_out = 20
-l2_reg = .001
+l2_reg = .001 / 10
 hidden_layers = 1
 verbose = True
 dtype = torch.FloatTensor
-networkType = 'DCGAN' # should one of ['baseline', 'baseline_conv', 'DCGAN']
+networkType = 'DCGAN_linear' # should one of ['baseline', 'baseline_conv', 'DCGAN']
 
 # load in neurosynth dataset:
-os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Data')
+os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Data/final')
 #dat = pickle.load(open('MatrixFormated_kernsize_10_pubmedVectors.p', 'rb'))
 myData = neurosynthData( 'MatrixFormated_kernsize_10_pubmedVectors_training.p' )
 myData_test = neurosynthData( 'MatrixFormated_kernsize_10_pubmedVectors_testing.p' )
@@ -55,13 +56,25 @@ if networkType=='DCGAN':
 	net = myDCGAN_arch()
 	net.apply(weights_init)
 	print(net)
+elif networkType=='DCGAN_linear':
+	net = myDCGAN_arch_linear()
+	net.apply(weights_init)
+	# set linear mapping to the identity:
+	net.linearMap.weight.data.copy_(torch.eye(200))
+	print(net)
 elif networkType=='baseline_conv':
 	net = baseline_network_conv( input_size=D_in , hidden_size=D_out*D_out, output_size=D_out, n_linear_layers=hidden_layers, n_conv_layers=0 )
 else:
 	net = baseline_network( input_size=D_in , hidden_size=D_out*D_out, output_size=D_out, n_linear_layers=hidden_layers )
 
+
+# compute total number of parameters:
+pytorch_total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
+
+print 'There are a total of ' + str(pytorch_total_params) + ' trainable params'
+
 # define the optimizer:
-if networkType=='DCGAN':
+if networkType in ['DCGAN', 'DCGAN_linear']:
 	optimizer = optim.Adam(net.parameters(), lr=lr, betas=(.5, 0.999))
 else:
 	optimizer = optim.SGD( net.parameters(), lr=lr, momentum=mom, weight_decay=l2_reg )
@@ -70,7 +83,7 @@ else:
 loss_train = [] # track training and test loss
 loss_test_track  = []
 
-my_loss =  nn.BCEWithLogitsLoss() #  F.mse_loss # F.l1_loss
+my_loss =  F.l1_loss #nn.BCEWithLogitsLoss() #  F.mse_loss # F.l1_loss
 
 if type(my_loss).__name__ == "BCEWithLogitsLoss":
 	useThres = True # we use the threshold because we are predicting binary outputs!
@@ -116,8 +129,12 @@ for e in range(tr):
 saveModel = False
 if saveModel:
 	# save the model
-	os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/models/new')
-	torch.save(net, 'dcgan_architecture_doubleFilters_CrossEntLoss_threshold.pth')
+	if networkType=='DCGAN':
+		os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/models/new')
+		torch.save(net, 'dcgan_architecture_doubleFilters_CrossEntLoss_threshold.pth')
+	elif networkType=='DCGAN_linear':
+		os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/models/new')
+		torch.save(net, 'dcgan_architecture_doubleFilters_L1Loss_LinearFirst_fullFilter.pth')
 
 
 # compare some images to see if it is learning anything..

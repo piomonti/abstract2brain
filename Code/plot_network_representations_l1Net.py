@@ -36,7 +36,7 @@ from data_loader import neurosynthData
 os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Code/utils')
 from plotBrains import *  # contains functions to downsample images!
 
-def getMeanVectorRepresentation( tokens, norm=True ):
+def getMeanVectorRepresentation( tokens, norm=True, center=True ):
 	"""
 	compute the mean word embedding vector for all words in the abstract 
 	"""
@@ -44,7 +44,10 @@ def getMeanVectorRepresentation( tokens, norm=True ):
 	counter = 0
 	for x in tokens:
 		try: 
-			abs_vec += (model.get_vector(x)-c_vec)
+			if center:
+				abs_vec += (model.get_vector(x)-c_vec)
+			else:
+				abs_vec += (model.get_vector(x))
 			counter += 1
 		except KeyError:
 			pass
@@ -67,7 +70,7 @@ c_vec = np.loadtxt('centeringWordVector.txt')
 # load in word vector representations
 model = model = gensim.models.KeyedVectors.load_word2vec_format('/Users/ricardo/Downloads/wikipedia-pubmed-and-PMC-w2v.bin', binary=True)
 
-def getMapping( net, tokens, thres=.05 , title_=None, saveFig=False):
+def getMapping( net, tokens, thres=.05 , center=True, title_=None, saveFig=False):
 	"""
 	compute predicted brain response from text
 
@@ -77,7 +80,7 @@ def getMapping( net, tokens, thres=.05 , title_=None, saveFig=False):
 
 	"""
 
-	wvec = getMeanVectorRepresentation( tokens )
+	wvec = getMeanVectorRepresentation( tokens, center=center )
 	#wvec -= c_vec
 	wvec = Variable( torch.from_numpy( wvec ).float()) # convert to correct format 
 	bimage = net( wvec ).data.numpy().reshape((20,20))
@@ -94,6 +97,32 @@ def getMapping( net, tokens, thres=.05 , title_=None, saveFig=False):
 		plt.savefig('activation_'+title_+'.png')
 
 
+def getMapping_nobrain( net, tokens, thres=.05, center=True):
+	"""
+	compute predicted brain response from text
+
+	INPUT:
+		- net    : a pretrained network used to predict images 
+		- tokens : a list of words, will take mean embedding
+
+	"""
+
+	wvec = getMeanVectorRepresentation( tokens, center=center )
+	#wvec -= c_vec
+	wvec = Variable( torch.from_numpy( wvec ).float()) # convert to correct format 
+	bimage = net( wvec ).data.numpy().reshape((20,20))
+
+	#plotting.plot_glass_brain( '/Users/ricardo/Documents/Projects/neurosynth_dnn/Data/trial_name.nii.gz', display_mode='z', threshold=1, title=title_)
+
+	my_arr_mask = np.ma.masked_where(bimage < thres, bimage)
+
+	cmap = plt.cm.YlOrRd
+	cmap.set_bad(color='white')
+	limits = 100 # 90 
+	plt.imshow( my_arr_mask , extent=(-1* limits, limits, -1*limits, limits), cmap=cmap, vmin=min(0, thres))#, vmax=my_arr.max())
+
+	return bimage
+
 # produce figures:
 os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Figures/presentation')
 getMapping(net, ['amygdala'], thres=.2, title_='amygdala', saveFig=True) # nice!
@@ -105,8 +134,18 @@ getMapping(net, ['memory', 'task', 'working'], title_='working memory', saveFig=
 getMapping(net, ['reward'], title_='reward', thres=.15, saveFig=True)
 
 # based on Rob/Romys suggestions
-getMapping(net, 'left finger tapping'.split(' '), thres=.19, title_='left finger tapping')
-getMapping(net, 'right-hand finger tapping righthand'.split(' '), thres=.19, title_='right finger tapping')
+#getMapping(net, 'left left-hand lefthand finger tapping'.split(' '), thres=.19, title_='left finger tapping', center=False)
+#getMapping(net, 'left finger tapping'.split(' '), thres=.25, title_='left finger tapping', center=False)
+#getMapping(net, 'right right-hand finger tapping righthand'.split(' '), thres=.2, title_='right finger tapping', center=False)
+
+getMapping(net, 'left finger tapping'.split(' '), thres=.16, title_='left finger tapping')
+getMapping(net, 'right finger tapping right-hand right right right right right'.split(' '), thres=.16, title_='right finger tapping')
+
+getMapping(net, 'face faces'.split(' '))
+
+
+getMapping_nobrain(net, ['prosody', 'peotry'], thres=.2)
+getMapping_nobrain(net, ['speech', 'spoken'], thres=.2)
 
 # put into 1 image
 os.system('convert ')
@@ -158,7 +197,10 @@ def semanticRelPrediction( tokens1, tokens2, thres=.05, norm = False):
 
 
 
-semanticRelPrediction(['working', 'memory', 'task'], ['faces', 'neutral'])
+semanticRelPrediction(['working', 'memory', 'task'], ['attention'], norm=False, thres=.1)
+
+semanticRelPrediction(['face', 'faces'], ['fear'], norm=False, thres=.1)
+
 
 #semanticRelPrediction( ['amygdala','emotion'], ['memory'] )
 #semanticRelPrediction( ['amygdala','emotion'], ['fear'] )
@@ -274,6 +316,8 @@ TraverseLatentSpace( tokens1=['pain', 'painful'], tokens2=['auditory'], thres=.1
 
 TraverseLatentSpace( tokens1=['pain', 'painful'], tokens2=['auditory'], thres=.125, stepNum=5)
 
+# left to right finger tapping
+TraverseLatentSpace( tokens1='left finger tapping'.split(' '), tokens2= 'right finger tapping right-hand right right right right right'.split(' '), thres=.16, stepNum=5,norm=True)
 
 
 
@@ -282,8 +326,8 @@ os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Data/final')
 myData = neurosynthData( 'MatrixFormated_kernsize_10_pubmedVectors_testing.p' )
 test_loader = DataLoader( myData, batch_size = 128 )
 
-#myData = neurosynthData( 'MatrixFormated_kernsize_10_pubmedVectors_training.p' )
-#test_loader = DataLoader( myData, batch_size = 128 )
+myData_train = neurosynthData( 'MatrixFormated_kernsize_10_pubmedVectors_training.p' )
+train_loader = DataLoader( myData, batch_size = 128 )
 
 
 def ComparePredictionl1Network( im_id ):
@@ -411,3 +455,83 @@ def ComparePredictionSeveralNetworks( im_id ):
 	os.system('rm *_l2.png')
 	os.system('rm *_BCE.png')
 	plt.close('all')
+
+
+
+
+#### apply Aapo idea of learning a new vector representation for words based on the final layer!
+#
+#
+
+# load in data
+os.chdir('/Users/ricardo/Documents/Projects/neurosynth_dnn/Data/final')
+dat = pickle.load(open('MatrixFormated_kernsize_10_pubmedVectors_training.p', 'rb'))
+
+# put word vectors into a matrix
+word_mat = np.zeros(( len(wordVector_dict.keys()), 200))
+for k in range(len(wordVector_dict.keys())):
+	word_mat[k,:] = wordVector_dict[ wordVector_dict.keys()[k] ]
+
+
+from sklearn.decomposition import PCA
+from sklearn.metrics.pairwise import pairwise_distances
+pdist_orig = pairwise_distances( word_mat )
+
+
+# project all word vectors into the final representation
+word_rep_dnn = Variable( torch.from_numpy( word_mat ).float())
+
+def GetFinalRepresentation(net, vectors):
+	"""
+	Get the final hidden representation
+	"""
+
+	n = vectors.size()[0]
+	net_steps = net.children().next()
+	out = vectors.view(-1, 200, 1, 1)
+	for i in range(len(net_steps)-2):
+		out = net_steps[i](out)
+
+	out = out.view(n, -1).data.numpy()
+
+	return out
+
+our_rep = GetFinalRepresentation( net, word_rep_dnn ) # actually I need to do this on words!
+our_rep = np.array(our_rep)
+
+# project into 200 dims
+pca_mod = PCA(n_components=200)
+pca_mod.fit( our_rep )
+word_mat_dnn = pca_mod.transform( our_rep )
+word_mat_dnn = scale( word_mat_dnn )
+word_mat = scale(word_mat)
+
+# run PCA on this representation:
+pdist_dnn = pairwise_distances( word_rep_dnn )
+
+
+plt.hist( pdist_orig.reshape(-1) - pdist_dnn.reshape(-1))
+
+
+def compareWordDistance( w1, w2 ):
+	"""
+
+	"""	
+	ii = wordVector_dict.keys().index(w1)
+	ii2 = wordVector_dict.keys().index(w2)
+
+	print 'original distance:' + str(np.sqrt((( word_mat[ii,:] - word_mat[ii2,:])**2).sum()))
+	print 'new distance: ' +str(np.sqrt((( word_mat_dnn[ii,:] - word_mat_dnn[ii2,:])**2).sum()))
+
+
+compareWordDistance('face','emotion')
+compareWordDistance('face','amygdala')
+compareWordDistance('amygdala','emotion')
+
+compareWordDistance('hippocampus', 'spatial')
+compareWordDistance('hippocampus', 'memory')
+
+compareWordDistance('language','broca')
+
+compareWordDistance('tapping','motor')
+

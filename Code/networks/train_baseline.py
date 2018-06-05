@@ -75,7 +75,7 @@ print 'There are a total of ' + str(pytorch_total_params) + ' trainable params'
 
 # define the optimizer:
 if networkType in ['DCGAN', 'DCGAN_linear']:
-	optimizer = optim.Adam(net.parameters(), lr=lr, betas=(.5, 0.999))
+	optimizer = optim.Adam(net.parameters(), lr=lr, betas=(.5, 0.999), weight_decay=l2_reg )
 else:
 	optimizer = optim.SGD( net.parameters(), lr=lr, momentum=mom, weight_decay=l2_reg )
 
